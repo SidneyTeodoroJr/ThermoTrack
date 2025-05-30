@@ -1,14 +1,17 @@
+import subprocess
+import sys
 import threading
-import requests
 import re
+import requests
+from datetime import datetime
+
 from back import update_data, get_last_datetime
-from module.utils import create_chart
+from module.utils import create_chart, legend_text, log_message, searchCity
 
 from flet import (
-    Page, ThemeMode, Container, app, Theme, Colors, Text,
-    FontWeight, ElevatedButton, Icons, padding, Column, Row, TextField
+    Page, ThemeMode, Container, app, Colors, Text,
+    FontWeight, ElevatedButton, Icons, padding, Column, Row, 
 )
-from datetime import datetime
 
 API_URL = "http://localhost:8000/history"
 
@@ -33,11 +36,10 @@ def main(page: Page):
     page.horizontal_alignment = "center"
     page.vertical_alignment = "center"
     page.theme_mode = ThemeMode.DARK
-    page.theme = Theme(color_scheme_seed="ORANGE")
 
     update_thread = None
     stop_thread = False
-    current_city = "São Paulo"
+    current_city = searchCity.value.strip()
 
     rows = fetch_history()
     data = [(row[0], row[1]) for row in rows]  # timestamp, temperature
@@ -46,10 +48,7 @@ def main(page: Page):
         content=create_chart(data, Colors.ORANGE),
         expand=True,
     )
-
-    legend_text = Text("Temperature (°C)", size=18, weight=FontWeight.BOLD)
-
-    log_message = Text("", size=14, color=Colors.RED)
+    page.update()
 
     def update_last_reading():
         last_dt_str = get_last_datetime()
@@ -84,17 +83,14 @@ def main(page: Page):
             data = [(row[0], row[1]) for row in rows]
             color = Colors.ORANGE
             legend = "Temperature (°C)"
-            page.theme.color_scheme_seed = "ORANGE"
         elif dataset == "eff":
             data = [(row[0], row[2]) for row in rows]
             color = Colors.GREEN
             legend = "Efficiency (%)"
-            page.theme.color_scheme_seed = "GREEN"
         else:
             data = []
             color = Colors.GRAY
             legend = ""
-            page.theme.color_scheme_seed = "GRAY"
 
         chart_container.content = create_chart(data, color)
         legend_text.value = legend
@@ -111,16 +107,6 @@ def main(page: Page):
         ],
     )
 
-    searchCity = TextField(
-        label="Search",
-        hint_text="Search for a city..",
-        counter_text="{value_length}/{max_length} chars used",
-        max_length=30,
-        prefix_icon=Icons.SEARCH,
-        on_submit=None  # will be set later to use the function defined below
-    )
-
-    # Simple validation: letters, spaces and hyphens only
     def validate_city_name(city: str) -> bool:
         pattern = r"^[a-zA-Z\s\-]+$"
         return re.match(pattern, city) is not None
@@ -190,7 +176,7 @@ def main(page: Page):
                                     width=400,
                                     content=searchCity
                                 ),
-                                log_message,  # visible log message to the user
+                                log_message,
                             ],
                             alignment="center",
                             horizontal_alignment="center",
@@ -210,8 +196,13 @@ def main(page: Page):
     update_thread.start()
 
 if __name__ == "__main__":
-    import sys
-    city = sys.argv[1] if len(sys.argv) > 1 else "São Paulo"
-    threading.Thread(target=update_data, args=(city,), daemon=True).start()
+    # Inicia o servidor da API FastAPI em background
+    api_process = subprocess.Popen([sys.executable, "start_api.py"])
 
-    app(target=main)
+    try:
+        city = sys.argv[1] if len(sys.argv) > 1 else searchCity.value.strip()
+        threading.Thread(target=update_data, args=(city,), daemon=True).start()
+
+        app(target=main)
+    finally:
+        api_process.terminate()

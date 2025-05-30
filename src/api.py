@@ -12,7 +12,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # adjust as needed for security
+    allow_origins=["*"],  # ajuste conforme necessidade
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,9 +27,7 @@ class Record(BaseModel):
 
 @app.on_event("startup")
 def startup():
-    # Ensure the folder exists
     os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
-    # Create the table if it doesn't exist
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
     cur.execute("""

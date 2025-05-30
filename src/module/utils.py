@@ -2,11 +2,23 @@ import os
 import sqlite3
 from datetime import datetime
 from flet import (
-    Text, LineChart, Colors, LineChartData, 
-    LinearGradient, alignment, LineChartDataPoint
+    Text, LineChart, Colors, LineChartData, FontWeight,
+    LinearGradient, alignment, LineChartDataPoint, TextField, Icons
 )
 
 DB_FILE = os.path.join("assets", "data", "data-base.db")
+
+legend_text = Text("Temperature (°C)", size=18, weight=FontWeight.BOLD)
+log_message = Text("", size=14, color=Colors.RED)
+
+searchCity = TextField(
+        label="Search",
+        hint_text="Search for a city..",
+        counter_text="{value_length}/{max_length} chars used",
+        max_length=30,
+        prefix_icon=Icons.SEARCH,
+        on_submit=None
+    )
 
 def get_history():
     try:
@@ -26,6 +38,8 @@ def get_history():
     except Exception as e:
         print(f"Error retrieving history: {e}")
         return []
+    
+    
 
 def create_chart(data, color):
     if not data:
@@ -50,13 +64,10 @@ def create_chart(data, color):
         max_y=max_y,
         min_x=min_x,
         max_x=max_x,
-        expand=True,
         data_series=[
             LineChartData(
                 color=color,
                 stroke_width=1,
-                curved=False,
-                stroke_cap_round=True,
                 below_line_gradient=LinearGradient(
                     begin=alignment.top_center,
                     end=alignment.bottom_center,
